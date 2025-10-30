@@ -18,6 +18,21 @@
       "title": "All Summarize",
       "description": "",
       "mode": "view"
+    },
+    {
+      "name": "dm-manager",
+      "title": "DM Manager",
+      "description": "Check Beeper MCP connectivity and manage direct messages",
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "beeperAuthToken",
+          "type": "password",
+          "title": "Beeper API Token",
+          "description": "Beeper DesktopのRemote Accessで発行されるAPIトークン。未入力の場合はトークンなしでアクセスします。",
+          "required": false
+        }
+      ]
     }
   ],
   "dependencies": {
