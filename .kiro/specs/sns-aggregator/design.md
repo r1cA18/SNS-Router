@@ -2,7 +2,9 @@
 
 ## Overview
 
-SNS Routerは、Raycast拡張機能として実装され、Chrome Dev Tools MCPとBeeper MCPを活用してWeb情報を取得・要約します。3つの独立したコマンド（全体要約、特定ジャンルキャッチアップ、DM統合管理）を提供し、それぞれ異なるユースケースに対応します。
+SNS Routerは、Raycast拡張機能として実装され、Chrome Dev Tools MCP、Beeper MCP、Beeper APIを活用してWeb情報を取得・要約します。5つの独立したコマンド（全体要約、特定ジャンルキャッチアップ、DM統合管理、URL管理、Weekly Digest）を提供し、それぞれ異なるユースケースに対応します。
+
+Weekly Digestコマンドは、Beeper APIから過去2週間の会話履歴を取得し、Raycast AIで分析・レポート生成することで、週次の活動振り返りを自動化します。
 
 ### 技術スタック
 
@@ -23,17 +25,21 @@ graph TB
         CMD2[特定ジャンルキャッチアップコマンド]
         CMD3[DM統合管理コマンド]
         CMD4[URL管理コマンド]
+        CMD5[Weekly Digestコマンド]
         
         URLMgr[URL Manager]
         Scraper[Content Scraper]
         Summarizer[AI Summarizer]
         DMHandler[DM Handler]
+        DigestAnalyzer[Digest Analyzer]
+        ReportGen[Report Generator]
         Storage[Storage Manager]
     end
     
     subgraph "External Services"
         ChromeMCP[Chrome Dev Tools MCP]
         BeeperMCP[Beeper MCP]
+        BeeperAPI[Beeper API]
         RaycastAI[Raycast AI]
     end
     
@@ -41,12 +47,17 @@ graph TB
     CMD2 --> Scraper
     CMD3 --> DMHandler
     CMD4 --> URLMgr
+    CMD5 --> DigestAnalyzer
     
     Scraper --> ChromeMCP
     Scraper --> Storage
     Summarizer --> RaycastAI
     Summarizer --> Storage
     DMHandler --> BeeperMCP
+    DigestAnalyzer --> BeeperAPI
+    DigestAnalyzer --> Storage
+    ReportGen --> RaycastAI
+    ReportGen --> Storage
     URLMgr --> Storage
 ```
 
@@ -73,6 +84,13 @@ interface RegisteredURL {
   isEnabled: boolean;
   lastFetchedAt?: Date;
   itemCount: number;
+  scrapingOptions?: {
+    scrollCount?: number;
+    scrollDelay?: number;
+    followLinks?: boolean;
+    maxPages?: number;
+    waitForSelector?: string;
+  };
 }
 
 interface URLManager {
@@ -237,6 +255,11 @@ interface StorageManager {
   loadSummaries(): Promise<Array<Summary & { name: string }>>;
   deleteSummary(id: string): Promise<void>;
   
+  // Weekly Digest管理
+  saveWeeklyDigest(digest: WeeklyDigest): Promise<void>;
+  loadWeeklyDigests(): Promise<WeeklyDigest[]>;
+  deleteWeeklyDigest(id: string): Promise<void>;
+  
   // 統計情報
   getStats(): Promise<{
     totalItems: number;
@@ -244,6 +267,87 @@ interface StorageManager {
     oldestItem?: Date;
     newestItem?: Date;
   }>;
+}
+```
+
+### 6. Digest Analyzer
+
+Beeper APIから取得した会話履歴を分析し、統計情報を生成。
+
+```typescript
+interface ConversationMessage {
+  id: string;
+  roomId: string;
+  roomName: string;
+  sender: string;
+  content: string;
+  timestamp: Date;
+  platform: string;
+}
+
+interface DigestStats {
+  period: {
+    startDate: Date;
+    endDate: Date;
+  };
+  totalMessages: number;
+  messagesByDay: Record<string, number>;
+  topContacts: Array<{ name: string; count: number }>;
+  activeChannels: Array<{ name: string; count: number }>;
+  busiestDay: { date: string; count: number };
+  nightMessages: number;  // 18時以降
+  weekendMessages: number;  // 土日
+  comparisonWithPreviousWeek?: {
+    messagesDiff: number;
+    percentageChange: number;
+  };
+}
+
+interface DigestAnalyzer {
+  // Beeper APIから会話履歴を取得
+  fetchConversations(startDate: Date, endDate: Date): Promise<ConversationMessage[]>;
+  
+  // 統計情報を計算
+  analyzeConversations(messages: ConversationMessage[]): Promise<DigestStats>;
+  
+  // 週ごとに分類
+  splitByWeek(messages: ConversationMessage[]): {
+    lastWeek: ConversationMessage[];
+    previousWeek: ConversationMessage[];
+  };
+  
+  // 返信待ちメッセージを検出（3日以上経過）
+  detectPendingReplies(messages: ConversationMessage[]): ConversationMessage[];
+}
+```
+
+### 7. Report Generator
+
+Raycast AIを使用してWeekly Digestレポートを生成。
+
+```typescript
+interface WeeklyDigestReport {
+  period: string;  // "2025年10月20日〜26日"
+  mainActivities: string;  // AIが抽出したプロジェクト/トピック
+  communicationStats: string;  // 統計情報のMarkdown
+  highlights: string;  // ポジティブなフィードバック
+  issues: string;  // 課題・未解決事項
+  workLifeBalance: string;  // ワークライフバランス分析
+  comparison: string;  // 先週との比較
+}
+
+interface ReportGenerator {
+  // レポート生成
+  generateReport(
+    messages: ConversationMessage[],
+    stats: DigestStats
+  ): Promise<WeeklyDigestReport>;
+  
+  // Markdown形式でレポートをフォーマット
+  formatAsMarkdown(report: WeeklyDigestReport): string;
+  
+  // レポートをファイルにエクスポート
+  exportToFile(report: WeeklyDigestReport, filename: string): Promise<void>;
 }
 ```
 
@@ -322,6 +426,72 @@ type DirectMessage = {
 };
 ```
 
+### ConversationMessage
+
+```typescript
+type ConversationMessage = {
+  id: string;              // UUID
+  roomId: string;          // ルームID
+  roomName: string;        // ルーム名（チャンネル名、DM相手名など）
+  sender: string;          // 送信者
+  content: string;         // メッセージ本文
+  timestamp: Date;         // 送信日時
+  platform: string;        // プラットフォーム名
+};
+```
+
+### WeeklyDigest
+
+```typescript
+type WeeklyDigest = {
+  id: string;              // UUID
+  period: {
+    startDate: Date;       // 期間開始日
+    endDate: Date;         // 期間終了日
+  };
+  stats: DigestStats;      // 統計情報
+  report: WeeklyDigestReport;  // AIが生成したレポート
+  markdown: string;        // Markdown形式のレポート全文
+  createdAt: Date;         // 生成日時
+};
+```
+
+### DigestStats
+
+```typescript
+type DigestStats = {
+  period: {
+    startDate: Date;
+    endDate: Date;
+  };
+  totalMessages: number;
+  messagesByDay: Record<string, number>;  // "2025-10-20": 45
+  topContacts: Array<{ name: string; count: number }>;
+  activeChannels: Array<{ name: string; count: number }>;
+  busiestDay: { date: string; count: number };
+  nightMessages: number;
+  weekendMessages: number;
+  comparisonWithPreviousWeek?: {
+    messagesDiff: number;
+    percentageChange: number;
+  };
+};
+```
+
+### WeeklyDigestReport
+
+```typescript
+type WeeklyDigestReport = {
+  period: string;          // "2025年10月20日〜26日"
+  mainActivities: string;  // AIが抽出したプロジェクト/トピック
+  communicationStats: string;  // 統計情報のMarkdown
+  highlights: string;      // ポジティブなフィードバック
+  issues: string;          // 課題・未解決事項
+  workLifeBalance: string; // ワークライフバランス分析
+  comparison: string;      // 先週との比較
+};
+```
+
 ## Command Implementations
 
 ### 1. 全体要約コマンド (All Summarize)
@@ -395,6 +565,40 @@ type DirectMessage = {
   - URL、名前、説明
   - スクレイピングオプション（スクロール回数、ページ遷移など）
 - Actions: 有効/無効切り替え、削除、今すぐ更新、設定編集
+
+### 5. Weekly Digestコマンド (Weekly Digest)
+
+**ファイル**: `src/weekly-digest.tsx`
+
+**フロー**:
+1. Beeper APIで過去14日間の全会話履歴を取得
+2. Digest Analyzerで会話を分析
+   - 先週（7日前〜今日）と先々週（14日前〜8日前）に分類
+   - 統計情報を計算（メッセージ数、相手、チャンネル、時間帯など）
+   - 返信待ちメッセージを検出
+3. Report Generatorで全会話データをRaycast AIに渡してレポート生成
+   - プロジェクト/トピック抽出
+   - ハイライト抽出
+   - 課題抽出
+   - 比較分析
+4. Markdown形式でレポートを表示
+5. ローカルストレージに保存
+
+**UI構成**:
+- Detail View: レポート全体をMarkdown表示
+  - 📅 期間表示
+  - 🎯 主な活動
+  - 💬 コミュニケーション統計
+  - ✅ 完了したこと
+  - 🔥 ハイライト
+  - ⚠️ 課題・未解決
+  - 📊 ワークライフバランス
+  - 📈 比較分析
+- Actions: 
+  - Markdownファイルとしてエクスポート
+  - カスタム期間で再生成
+  - 過去のレポート一覧を表示
+- Progress Indicator: API取得とAI生成の進捗表示
 
 ## Error Handling
 

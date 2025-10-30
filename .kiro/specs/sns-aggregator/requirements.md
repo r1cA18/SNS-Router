@@ -2,19 +2,25 @@
 
 ## Introduction
 
-SNS Routerは、主要SNS（X、Instagram、Discord、Slack）とユーザーが追加したWebサイトURLからChrome Dev Tools MCPを使用して情報を取得し、Raycast上でAIに要約・整理してもらう拡張機能です。3つの主要コマンド（全体要約、特定ジャンルのキャッチアップ、DM統合管理）を提供し、用途に応じて使い分けられます。個人実験用として、ブラウザでログイン済みのセッションを利用することで、パーソナライズされた情報を取得します。
+SNS Routerは、主要SNS（X、Instagram、Discord、Slack）とユーザーが追加したWebサイトURLからChrome Dev Tools MCPを使用して情報を取得し、Raycast上でAIに要約・整理してもらう拡張機能です。5つの主要コマンド（全体要約、特定ジャンルのキャッチアップ、DM統合管理、URL管理、Weekly Digest）を提供し、用途に応じて使い分けられます。個人実験用として、ブラウザでログイン済みのセッションを利用することで、パーソナライズされた情報を取得します。
+
+Weekly Digestコマンドは、Beeper APIから過去2週間の会話履歴を取得し、週次レポートを自動生成することで、仕事の振り返りと活動分析を支援します。
 
 ## Glossary
 
 - **SNS Router**: Chrome Dev Tools MCPとBeeper MCPを使用してWeb情報を取得・要約するRaycast拡張機能
 - **Chrome Dev Tools MCP**: ブラウザのDevToolsプロトコルを使用してWebページの情報を取得するMCPサーバー
 - **Beeper MCP**: メッセージングプラットフォームのDMを統合管理するMCPサーバー
+- **Beeper API**: Beeperプラットフォームの会話履歴を取得するためのHTTP API
 - **Content Scraper**: Chrome Dev Tools MCPを使用してWebページから情報を抽出するコンポーネント
 - **AI Summarizer**: 取得した情報を要約し、重要なポイントを抽出するAI機能
 - **Preset URL**: システムが提供する主要SNS（X、Instagram、Discord、Slack）のURL
 - **Custom URL**: ユーザーが追加した監視対象のWebサイトURL
 - **Message Item**: SNS投稿、記事、通知などの個別の情報単位
 - **Summary View**: AIが生成した要約を表示するビュー
+- **Weekly Digest**: 過去1週間または2週間の会話履歴を分析して生成される週次レポート
+- **Digest Analyzer**: 会話履歴を分析し、統計情報やインサイトを抽出するコンポーネント
+- **Report Generator**: Raycast AIを使用してWeekly Digestレポートを生成するコンポーネント
 
 ## Requirements
 
@@ -113,3 +119,51 @@ SNS Routerは、主要SNS（X、Instagram、Discord、Slack）とユーザーが
 3. WHEN ユーザーがデータクリアを実行する, THEN THE SNS Router SHALL 確認ダイアログを表示した後に全データを削除する
 4. THE SNS Router SHALL 最も古いMessage Itemと最も新しいMessage Itemの日時を表示する
 5. WHEN ユーザーが特定期間のデータ削除を実行する, THEN THE SNS Router SHALL 指定期間のMessage Itemを削除する
+
+### Requirement 9
+
+**User Story:** ユーザーとして、過去の会話履歴から週次レポートを自動生成したい。そうすることで、1週間の活動を振り返り、仕事の進捗や課題を把握できる。
+
+#### Acceptance Criteria
+
+1. WHEN ユーザーがWeekly Digestコマンドを実行する, THEN THE SNS Router SHALL Beeper APIを使用して過去14日間の全会話履歴を取得する
+2. THE Digest Analyzer SHALL 取得した会話履歴を先週（7日前〜今日）と先々週（14日前〜8日前）に分類する
+3. THE Digest Analyzer SHALL 総メッセージ数、最も会話した相手トップ5、アクティブなチャンネルを集計する
+4. THE Digest Analyzer SHALL 日別のメッセージ分布と最も忙しかった日を特定する
+5. THE Report Generator SHALL 全会話履歴をRaycast AIに渡してレポートを生成する
+
+### Requirement 10
+
+**User Story:** ユーザーとして、AIが生成した週次レポートで活動内容を把握したい。そうすることで、プロジェクトやトピックごとの進捗を確認できる。
+
+#### Acceptance Criteria
+
+1. THE Report Generator SHALL 会話内容からプロジェクトやトピックを自動抽出する
+2. THE Report Generator SHALL 各プロジェクトに関連する会話数と主な内容を要約する
+3. THE Report Generator SHALL ポジティブなフィードバックや成果をハイライトとして抽出する
+4. THE Report Generator SHALL 返信待ちのメッセージ（3日以上経過）を課題として抽出する
+5. THE Summary View SHALL レポートをMarkdown形式で表示する
+
+### Requirement 11
+
+**User Story:** ユーザーとして、先週との比較分析を確認したい。そうすることで、コミュニケーションのトレンドや変化を把握できる。
+
+#### Acceptance Criteria
+
+1. THE Digest Analyzer SHALL 先週と先々週のメッセージ数を比較し増減率を計算する
+2. THE Digest Analyzer SHALL 平日夜間（18時以降）のメッセージ数を集計する
+3. THE Digest Analyzer SHALL 週末（土日）のメッセージ数を集計する
+4. THE Report Generator SHALL 先週との比較結果をレポートに含める
+5. THE Report Generator SHALL ワークライフバランスに関するインサイトを生成する
+
+### Requirement 12
+
+**User Story:** ユーザーとして、生成された週次レポートをエクスポートしたい。そうすることで、週報として活用したり、上司への報告に使用できる。
+
+#### Acceptance Criteria
+
+1. THE SNS Router SHALL 生成されたレポートをMarkdown形式でファイル保存する機能を提供する
+2. THE SNS Router SHALL レポートに期間（開始日〜終了日）を明記する
+3. THE SNS Router SHALL 過去に生成したレポートをローカルストレージに保存する
+4. WHEN ユーザーが過去のレポート一覧を表示する, THEN THE SNS Router SHALL 保存済みレポートを日付順に表示する
+5. THE SNS Router SHALL カスタム期間（任意の開始日〜終了日）でレポート生成する機能を提供する

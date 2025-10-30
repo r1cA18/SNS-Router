@@ -3,15 +3,17 @@
 - [ ] 1. プロジェクト基盤とデータモデルの実装
   - TypeScript型定義とインターフェースを作成
   - RegisteredURL、MessageItem、Summary、DirectMessage型を定義
-  - _Requirements: 1.1, 1.2, 2.1_
+  - ConversationMessage、WeeklyDigest、DigestStats、WeeklyDigestReport型を定義
+  - _Requirements: 1.1, 1.2, 2.1, 9.1_
 
 - [ ] 2. Storage Managerの実装
   - [ ] 2.1 Raycast LocalStorage APIを使用したStorage Managerを実装
     - URL管理機能（保存・読み込み）
     - Message Item管理機能（保存・読み込み・削除）
     - 要約管理機能（保存・読み込み・削除）
+    - Weekly Digest管理機能（保存・読み込み・削除）
     - 統計情報取得機能
-    - _Requirements: 1.2, 1.3, 2.5, 8.1, 8.2, 8.3, 8.4, 8.5_
+    - _Requirements: 1.2, 1.3, 2.5, 8.1, 8.2, 8.3, 8.4, 8.5, 12.3, 12.4_
 
 - [ ] 3. URL Managerの実装
   - [ ] 3.1 プリセットURL初期化機能を実装
@@ -210,23 +212,113 @@
     - _Requirements: 2.2_
 
 - [ ] 13. package.jsonの更新
-  - コマンド定義を追加（all-summarize、topic-catchup、dm-manager、manage-urls）
+  - コマンド定義を追加（all-summarize、topic-catchup、dm-manager、manage-urls、weekly-digest）
   - 必要な依存関係を追加
   - _Requirements: 全体_
 
-- [ ] 14. 統合テストと最終調整
-  - [ ] 14.1 各コマンドの動作確認
+- [ ] 14. Digest Analyzerの実装
+  - [ ] 14.1 Beeper API連携機能を実装
+    - Beeper APIクライアントの作成
+    - 指定期間の会話履歴取得
+    - ConversationMessage型への変換
+    - _Requirements: 9.1_
+  
+  - [ ] 14.2 会話分析機能を実装
+    - 週ごとの分類（先週 vs 先々週）
+    - 統計情報の計算（総数、相手別、チャンネル別）
+    - 日別メッセージ分布の集計
+    - 最も忙しかった日の特定
+    - _Requirements: 9.2, 9.3, 9.4_
+  
+  - [ ]* 14.3 時間帯分析機能を実装
+    - 平日夜間メッセージ数の集計（18時以降）
+    - 週末メッセージ数の集計（土日）
+    - _Requirements: 11.2, 11.3_
+  
+  - [ ]* 14.4 比較分析機能を実装
+    - 先週と先々週の比較
+    - 増減率の計算
+    - _Requirements: 11.1, 11.4_
+  
+  - [ ]* 14.5 返信待ち検出機能を実装
+    - 3日以上経過したメッセージの検出
+    - 未返信の会話の特定
+    - _Requirements: 10.4_
+
+- [ ] 15. Report Generatorの実装
+  - [ ] 15.1 Raycast AI連携機能を実装
+    - 会話履歴をAIに渡すプロンプト生成
+    - レポート生成リクエスト
+    - _Requirements: 9.5, 10.1_
+  
+  - [ ] 15.2 レポート生成機能を実装
+    - プロジェクト/トピック抽出
+    - ハイライト抽出（ポジティブなフィードバック）
+    - 課題抽出（返信待ち、持ち越しタスク）
+    - 比較分析の生成
+    - ワークライフバランスインサイトの生成
+    - _Requirements: 10.1, 10.2, 10.3, 10.4, 11.5_
+  
+  - [ ] 15.3 Markdownフォーマット機能を実装
+    - レポートをMarkdown形式に整形
+    - 絵文字とセクション分けの追加
+    - _Requirements: 10.5_
+  
+  - [ ]* 15.4 エクスポート機能を実装
+    - Markdownファイルとして保存
+    - ファイル名に期間を含める
+    - _Requirements: 12.1, 12.2_
+
+- [ ] 16. Weekly Digestコマンドの実装
+  - [ ] 16.1 コマンドエントリーポイントを実装
+    - weekly-digest.tsxファイル作成
+    - 基本的なコマンド構造
+    - _Requirements: 9.1_
+  
+  - [ ] 16.2 データ取得と分析実行機能を実装
+    - Beeper APIで過去14日間の会話履歴を取得
+    - Digest Analyzerで分析実行
+    - 進捗表示（Toast/Progress Indicator）
+    - エラーハンドリング
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+  
+  - [ ] 16.3 レポート生成と表示UIを実装
+    - Report Generatorでレポート生成
+    - Detail ViewでMarkdown表示
+    - 期間、統計、ハイライト、課題などのセクション表示
+    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
+  
+  - [ ]* 16.4 アクションを実装
+    - Markdownファイルとしてエクスポート
+    - カスタム期間選択（Form表示）
+    - 過去のレポート一覧表示
+    - _Requirements: 12.1, 12.2, 12.4, 12.5_
+  
+  - [ ]* 16.5 レポート保存機能を実装
+    - Storage Managerとの連携
+    - 生成したレポートをローカルストレージに保存
+    - _Requirements: 12.3_
+
+- [ ] 17. 統合テストと最終調整
+  - [ ] 17.1 各コマンドの動作確認
     - 全体要約コマンドのテスト
     - 特定ジャンルキャッチアップコマンドのテスト
     - URL管理コマンドのテスト
+    - Weekly Digestコマンドのテスト
     - _Requirements: 全体_
   
-  - [ ] 14.2 MCP統合テスト
+  - [ ] 17.2 MCP統合テスト
     - Chrome Dev Tools MCPとの実際の連携テスト
     - スクロール・ページ遷移の動作確認
     - _Requirements: 3.2, 4.1, 5.2_
   
-  - [ ] 14.3 パフォーマンス最適化
+  - [ ]* 17.3 Beeper API統合テスト
+    - 実際のBeeper APIとの連携テスト
+    - 会話履歴取得の動作確認
+    - レポート生成の精度確認
+    - _Requirements: 9.1, 9.5_
+  
+  - [ ] 17.4 パフォーマンス最適化
     - 並列処理の確認
     - タイムアウト設定の調整
     - ストレージ上限の確認
