@@ -214,7 +214,7 @@ export class BeeperApiClient {
 
   async listMessages(chatID: string, params: ListMessagesParams = {}): Promise<ListMessagesResponse> {
     const response = await this.get<SearchMessagesResponse>("/search-messages", {
-      query: { chatIDs: [chatID], ...params } as QueryParams,
+      query: this.normalizeMessageQuery({ chatIDs: [chatID], ...params }),
     });
 
     // SearchMessagesResponse を ListMessagesResponse 形式に変換
@@ -335,5 +335,28 @@ export class BeeperApiClient {
     } catch {
       return text;
     }
+  }
+
+  private normalizeMessageQuery(query: QueryParams) {
+    const result: QueryParams = {};
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined || value === null) {
+        continue;
+      }
+
+      if (key === "direction" && typeof value === "string") {
+        if (value === "backward") {
+          result[key] = "before";
+          continue;
+        }
+        if (value === "forward") {
+          result[key] = "after";
+          continue;
+        }
+      }
+
+      result[key] = value;
+    }
+    return result;
   }
 }
